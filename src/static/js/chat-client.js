@@ -40,11 +40,67 @@ form.addEventListener('submit', event => {
     messageEl.value = "";
 });
 
+const messageEl = document.querySelector('[name=message]');
+messageEl.addEventListener('input', event => {
+    socket.emit('user:typing', { pseudo });
+});
+
 // Dès qu'on reçoit un message du serveur de la part d'un autre user
 socket.on('user:message', message => {
+
+    const index = typingUsers.findIndex(u => u.id === message.id);
+    if (index > -1) {
+        typingUsers.splice(index, 1);
+        showTypingUsers();
+    }
+
     // Afficher le message dans la zone de tchat
     showMessage(message);
 });
+
+const typingUsers = [
+    // { pseudo, id, timer }
+];
+
+// Si on reçoit une info serveur comme quoi qqn écrit …
+socket.on('user:typing', user => {
+
+    // Vérifier si l'utilisateur n'est pas déjà dans la liste des "typingUsers"
+    let typingUser = typingUsers.find(u => u.id === user.id);
+    
+    // S'il est déjà présent dans le tableau, on supprime son ancien timer
+    if (typingUser) {
+        clearTimeout(typingUser.timer);
+    } else {
+        // Sinon, on le crée et on l'ajoute au tableau
+        typingUser = {
+            pseudo: user.pseudo,
+            id: user.id,
+            timer: null
+        };
+        typingUsers.push(typingUser);
+    }
+
+    typingUser.timer = setTimeout(() => {
+        let index = typingUsers.findIndex(u => u.id === typingUser.id);
+        if (index > -1) {
+            typingUsers.splice(index, 1);
+            showTypingUsers();
+        }
+    }, 5000);
+    
+    showTypingUsers();
+});
+
+function showTypingUsers() {
+    let html = '';
+    typingUsers.forEach(user => {
+        html += `<div>${user.pseudo} est en train d'écrire …</div>`;
+    });
+
+    const notifications = document.querySelector('.notifications');
+    notifications.innerHTML = html;
+}
 
 function addUsersToList(connectedUsers) {
     const ul = document.querySelector('.chat-users ul');

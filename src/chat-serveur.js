@@ -45,12 +45,25 @@ module.exports = function(io) {
             // Ajout de la couleur
             message.color = seedColor(message.pseudo).toHex();
 
+            // Ajout du socket.id
+            message.id = socket.id;
+
             // Transférer le message à tout le monde (y compris l'émetteur)
             io.emit('user:message', message);
 
             // Ajout dans la liste antispam
             antiSpam.addToList(socket.id);
         });
+
+        // Dès que le serveur reçoit l'info de qqn en train d'écrire
+        socket.on('user:typing', (user) => {
+            // Envoie à tout le monde SAUF à l'émetteur
+            socket.broadcast.emit('user:typing', {
+                pseudo: user.pseudo,
+                id: socket.id
+            });
+        });
+
 
         // Si un utilisateur se déconnecte, on met le tableau "connectedUsers" à jour
         socket.on('disconnect', reason => {

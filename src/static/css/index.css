@@ -96,10 +96,13 @@ button:active {
 }
 
 .chatbox-messages {
-    margin-bottom: 4.5rem;
     margin-right: 1rem;
     max-height: calc(100vh - 220px);
     overflow: auto;
+}
+
+.notifications {
+    margin-bottom: 4.5rem;
 }
 
 .message {
