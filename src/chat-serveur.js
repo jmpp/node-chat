@@ -6,12 +6,10 @@ const seedColor = require('seed-color');
 module.exports = function(io) {
 
     const connectedUsers = [];
+    const antiSpam = new AntiSpam();
 
     io.on('connection', (socket) => {
         console.log(`Socket #${socket.id} connected!`);
-
-        // socket.emit -->
-        // socket.on <--
 
         // Dès qu'on a reçu un pseudo, on met la liste à jour
         socket.on('user:pseudo', (pseudo) => {
@@ -30,6 +28,12 @@ module.exports = function(io) {
 
         // Dès qu'on reçoit un message d'un user, on le transmet aux autres users
         socket.on('user:message', message => {
+
+            // Vérification que l'utilisateur (son socket ID) n'est pas dans la spam list
+            if (antiSpam.isInList(socket.id)) {
+                return console.info(`[antispam]: Message from ${message.pseudo} blocked!`);
+            }
+
             // Vérification qu'on a pas reçu un message vide !
             if (message.message.trim() === '') return;
 
@@ -43,6 +47,9 @@ module.exports = function(io) {
 
             // Transférer le message à tout le monde (y compris l'émetteur)
             io.emit('user:message', message);
+
+            // Ajout dans la liste antispam
+            antiSpam.addToList(socket.id);
         });
 
         // Si un utilisateur se déconnecte, on met le tableau "connectedUsers" à jour
@@ -57,3 +64,30 @@ module.exports = function(io) {
         });
     });
 };
+
+class AntiSpam {
+    static COOL_TIME = 2000;
+
+    constructor() {
+        this.spamList = [];
+    }
+
+    addToList(socketID) {
+        if (!this.isInList(socketID)) {
+            this.spamList.push(socketID);
+
+            setTimeout(() => this.removeFromList(socketID), AntiSpam.COOL_TIME);
+        }
+    }
+
+    removeFromList(socketID) {
+        let index = this.spamList.indexOf(socketID);
+        if (index > -1) {
+            this.spamList.splice(index, 1);
+        }
+    }
+
+    isInList(socketID) {
+        return this.spamList.includes(socketID);
+    }
+}
